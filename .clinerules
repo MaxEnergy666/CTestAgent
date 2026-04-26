@@ -1,0 +1,9 @@
+# 前端项目规范
+- 使用 Vue 3 + Composition API + <script setup> 语法
+- UI 组件库使用 Element Plus
+- 图表使用 ECharts
+- 样式优先使用 scoped CSS，配色方案使用深色科技风（暗色背景 #0a0e1a，强调色 #00d4ff 青色）
+- 所有组件放在 src/components/ 下，页面放在 src/views/ 下
+- 与后端通信使用 axios（REST）和原生 WebSocket（实时事件）
+- 代码注释用中文
+- 组件命名使用 PascalCase，文件名使用 PascalCase.vue

@@ -1,0 +1,31 @@
+/* 全局样式：深色科技风基础设定 */
+:root {
+  font-family: Inter, 'PingFang SC', 'Microsoft YaHei', Avenir, Helvetica, Arial, sans-serif;
+  color: #e8f0ff;
+  background-color: #0a0e1a;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  min-height: 100%;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  background: #0a0e1a;
+}
+
+html,
+body {
+  overflow-x: hidden;
+  overflow-y: auto;
+}

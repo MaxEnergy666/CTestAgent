@@ -1,0 +1,22 @@
+# 六个智能体共享的 API Key 配置文件
+# 建议：将此文件加入 .gitignore，避免泄露真实密钥。
+
+provider: "anthropic"
+endpoint: "https://api.anthropic.com/v1/messages"
+# 可选：如果你使用第三方中转站，可直接填 base_url（如 https://xiaoma.best）。
+base_url: "https://xiaoma.best"
+model: "claude-haiku-4-5"
+timeout_seconds: 8
+
+# 可选：单个全局 key（六个智能体共用），配置后可不再逐个填写 keys.*。
+auth_token: "sk-K8gfFeTGxOp1LYxZjQvZDtBEElQfpU6a07hAs1qBMViLMLXX"
+
+keys:
+  # 可选：default 作为所有智能体的后备 key。
+  default: ""
+  Coordinator: ""
+  Analyzer: ""
+  Generator: ""
+  Executor: ""
+  Reviewer: ""
+  Reporter: ""

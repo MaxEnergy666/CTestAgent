@@ -1,0 +1,85 @@
+# config.yaml
+project:
+  name: "Damn Vulnerable C Program Multi-Agent Testing"
+  source_dir: "./targets/Damn Vulnerable C Program"
+  entry_function: "ProcessImage"
+  compile_flags: "-Wall -g"
+
+agents:
+  coordinator:
+    explore_to_deep_threshold: 0.6
+    stagnation_limit: 500
+    max_rounds: 500
+    max_rounds_hard_cap: 800
+    max_time_seconds: 1800
+    coverage_goal_line: 1.0
+    coverage_goal_branch: 1.0
+    stop_on_stagnation: false
+    no_progress_round_limit: 30
+    no_progress_stop_enabled: false
+    no_progress_min_rounds_before_stop: 240
+    no_progress_min_seconds_before_stop: 900
+    no_progress_rescue_enabled: true
+    no_progress_rescue_max_attempts: 0
+    no_progress_rescue_cooldown_rounds: 30
+    max_batch_size: 240
+    rescue_batch_multiplier: 2.0
+    stagnation_batch_multiplier: 1.5
+    api_round_interval: 3
+    api:
+      enabled: true
+      model: "claude-haiku-4-5"
+
+  analyzer:
+    api:
+      enabled: true
+      model: "claude-haiku-4-5"
+
+  generator:
+    batch_size: 60
+    explore_weights:
+      equivalence: 0.35
+      boundary: 0.35
+      random: 0.20
+      error_guess: 0.10
+    deep_weights:
+      decision_table: 0.35
+      state_sequence: 0.25
+      whitebox_guided: 0.30
+      error_guess: 0.10
+    api_round_interval: 3
+    api:
+      enabled: true
+      model: "claude-haiku-4-5"
+
+  executor:
+    timeout_per_case: 2
+    enable_asan: false
+    enable_gcov: true
+    api_max_requests_per_batch: 1
+    api_triage_statuses: ["CRASH"]
+    api:
+      enabled: true
+      model: "claude-haiku-4-5"
+
+  reviewer:
+    approval_threshold: 0.4
+    crash_verify_count: 3
+    max_new_crashes_per_round: 10
+    api_review_interval: 6
+    diversity_weight: 0.3
+    coverage_weight: 0.4
+    validity_weight: 0.3
+    api:
+      enabled: true
+      model: "claude-haiku-4-5"
+
+  reporter:
+    minimize_crashes: true
+    report_format: "html"
+    api:
+      enabled: true
+      model: "claude-haiku-4-5"
+
+output:
+  dir: "./output"

@@ -1,0 +1,8 @@
+[1] gcc: C:\msys64\mingw64\bin\gcc.EXE, exists: True
+[2] Compile: C:\msys64\mingw64\bin\gcc.EXE d:\Desktop\软件测试实验\智能体实验\CTestAgent\targets\cjson\cJSON.c d:\Desktop\软件测试实验\智能体实验\CTestAgent\output\executor_work\test_harness.c -o d:\Desktop\软件测试实验\智能体实验\CTestAgent\output\executor_work\test_harness.exe -I d:\Desktop\软件测试实验\智能体实验\CTestAgent\targets\cjson -Wall -g
+[2] rc=0
+[2] SUCCESS
+[3] rc=0, stdout={
+	"key":	"value"
+}
+[3] SUCCESS
