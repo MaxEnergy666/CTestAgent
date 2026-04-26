@@ -68,9 +68,63 @@ class ReviewerAgent(BaseAgent):
 
     def setup(self):
         """注册消息订阅"""
+        self.bus.register_agent("Reviewer", self)
         self.subscribe("data:test_cases", self.on_test_cases)
         self.subscribe("data:execution_results", self.on_execution_results)
         self.subscribe("data:coverage_update", self.on_coverage_update)
+
+    def _refresh_total_lines_from_gcov(self) -> set[str]:
+        """从 executor_work 的 gcov 快照读取被测 C 文件可执行行集合。"""
+        source_root = Path(self.source_dir).resolve() if self.source_dir else None
+        work_dir = Path(__file__).resolve().parents[1] / "output" / "executor_work"
+        executable_total_lines: set[str] = set()
+        if source_root is None or not work_dir.exists():
+            return executable_total_lines
+
+        root_lower = str(source_root).lower()
+        for gcov_file in work_dir.glob("*.gcov"):
+            try:
+                should_include = False
+                filename = ""
+                with open(gcov_file, "r", errors="ignore") as f:
+                    for raw in f:
+                        if raw.startswith("        -:    0:Source:"):
+                            src_text = raw.split("Source:", 1)[1].strip()
+                            src_path = Path(src_text)
+                            try:
+                                src_resolved = src_path.resolve()
+                            except Exception:
+                                src_resolved = src_path
+
+                            src_lower = str(src_resolved).lower()
+                            should_include = (
+                                src_resolved.suffix.lower() == ".c"
+                                and src_lower.startswith(root_lower)
+                            )
+                            filename = src_resolved.name if should_include else ""
+                            continue
+
+                        if not should_include:
+                            continue
+
+                        parts = raw.split(":", 2)
+                        if len(parts) < 2:
+                            continue
+                        exec_count = parts[0].strip()
+                        line_no = parts[1].strip()
+                        if line_no.isdigit() and exec_count != "-":
+                            executable_total_lines.add(f"{filename}:{line_no}")
+            except Exception as exc:
+                self.log_warning(f"[OBS][gcov_total_lines_skip] file={gcov_file.name}, error={exc}")
+
+        return executable_total_lines
+
+    def collect_pending_feedback(self) -> list[ReviewFeedback]:
+        """在轮次边界收集覆盖率反馈；不在执行结果回调内同步发布。"""
+        feedbacks = self.analyze_coverage_gaps()
+        feedback_types = [fb.type.value for fb in feedbacks]
+        self.log_info(f"[OBS][feedback_emit] count={len(feedbacks)}, types={feedback_types}")
+        return feedbacks
 
     def on_test_cases(self, msg: Message):
         """接收 Generator 生成的测试用例，进行预筛选"""
@@ -133,14 +187,30 @@ class ReviewerAgent(BaseAgent):
                 "total_crashes": len(crashes),
             })
 
-        # 更新覆盖率数据并分析缺口
+        # 更新覆盖率数据。这里只维护状态，反馈统一延迟到 Coordinator 的轮次边界处理。
+        observed_covered_lines: set[str] = set()
         for r in results:
             if isinstance(r, ExecutionResult) and r.coverage_lines:
-                self.coverage_data.covered_lines.update(r.coverage_lines)
+                observed_covered_lines.update(r.coverage_lines)
                 if r.branch_total:
                     self.coverage_data.branch_total.update(r.branch_total)
                 if r.branch_covered:
                     self.coverage_data.branch_covered.update(r.branch_covered)
+
+        executable_total_lines = self._refresh_total_lines_from_gcov()
+        if executable_total_lines:
+            self.coverage_data.total_lines = executable_total_lines
+
+        if self.coverage_data.total_lines:
+            self.coverage_data.covered_lines.update(observed_covered_lines & self.coverage_data.total_lines)
+            self.coverage_data.covered_lines = {
+                line for line in self.coverage_data.covered_lines
+                if line in self.coverage_data.total_lines
+            }
+        else:
+            self.coverage_data.covered_lines.update(observed_covered_lines)
+
+        self.coverage_data.coverage_history.append(self.coverage_data.line_rate)
 
         self.log_info(
             f"[OBS][execution_results] total_results={len(results)}, crashes={len(crashes)}, "
@@ -148,17 +218,6 @@ class ReviewerAgent(BaseAgent):
             f"history_len={len(self.coverage_data.coverage_history)}, "
             f"branch_covered={len(self.coverage_data.branch_covered)}/{len(self.coverage_data.branch_total)}"
         )
-
-        # 生成覆盖率分析反馈
-        feedbacks = self.analyze_coverage_gaps()
-        feedback_types = [fb.type.value for fb in feedbacks]
-        self.log_info(f"[OBS][feedback_emit] count={len(feedbacks)}, types={feedback_types}")
-        for fb in feedbacks:
-            self.publish("feedback:review", fb)
-
-        # 生成策略建议给 Coordinator
-        if feedbacks:
-            self.publish("feedback:strategy", feedbacks)
 
     def on_coverage_update(self, msg: Message):
         """接收覆盖率增量种子通知（仅观测，不推进 history/total_lines）"""

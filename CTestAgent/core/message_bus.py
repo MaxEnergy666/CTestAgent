@@ -30,7 +30,17 @@ class MessageBus:
         self._subscribers: dict[str, list[Callable]] = defaultdict(list)
         self._message_log: list[Message] = []
         self._publish_hooks: list[Callable[[Message], None]] = []
+        self._agents: dict[str, Any] = {}
         self._enabled = True
+
+    def register_agent(self, name: str, agent: Any):
+        """注册智能体实例，供协调者在轮次边界安全调用非消息接口。"""
+        if name:
+            self._agents[name] = agent
+
+    def get_agent(self, name: str) -> Any:
+        """按名称获取已注册的智能体实例。"""
+        return self._agents.get(name)
 
     def add_publish_hook(self, hook: Callable[[Message], None]):
         """注册发布钩子（用于 WebSocket 广播等扩展能力）"""

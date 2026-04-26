@@ -84,6 +84,61 @@ class CoordinatorAgent(BaseAgent):
         self._round_complete = False
         self._waiting_for_results = False
         self._fatal_executor_error = ""
+        self._deferred_review_feedback: list[ReviewFeedback] = []
+
+    def _get_reviewer_agent(self):
+        getter = getattr(self.bus, "get_agent", None)
+        if not callable(getter):
+            return None
+        return getter("Reviewer")
+
+    def _emit_deferred_review_feedback(self, round_num: int):
+        """在当前轮正常生成前释放上一轮反馈；异常不影响主循环。"""
+        if not self._deferred_review_feedback:
+            return
+
+        feedbacks = list(self._deferred_review_feedback)
+        self._deferred_review_feedback = []
+
+        try:
+            self.log_info(
+                f"[OBS][deferred_feedback_emit] round={round_num}, count={len(feedbacks)}, "
+                f"types={[fb.type.value for fb in feedbacks]}"
+            )
+            for feedback in feedbacks:
+                if isinstance(feedback, ReviewFeedback):
+                    self.publish("feedback:review", feedback)
+        except Exception as exc:
+            self.log_error(f"延迟反馈发布失败，已丢弃本批反馈并继续主循环: {exc}")
+            self._deferred_review_feedback = []
+
+    def _collect_review_feedback_for_next_round(self, round_num: int):
+        """本轮结束后收集 Reviewer 反馈，缓存给下一轮使用。"""
+        try:
+            reviewer = self._get_reviewer_agent()
+            collector = getattr(reviewer, "collect_pending_feedback", None)
+            if not callable(collector):
+                return
+
+            feedbacks = collector()
+            if not isinstance(feedbacks, list):
+                self.log_warning(
+                    f"[OBS][deferred_feedback_collect] round={round_num}, unexpected_type={type(feedbacks).__name__}"
+                )
+                return
+
+            self._deferred_review_feedback = [
+                fb for fb in feedbacks
+                if isinstance(fb, ReviewFeedback)
+            ]
+            self.log_info(
+                f"[OBS][deferred_feedback_collect] round={round_num}, "
+                f"count={len(self._deferred_review_feedback)}, "
+                f"types={[fb.type.value for fb in self._deferred_review_feedback]}"
+            )
+        except Exception as exc:
+            self.log_error(f"收集 Reviewer 延迟反馈失败，已清空反馈并继续主循环: {exc}")
+            self._deferred_review_feedback = []
 
     def _resolve_round_batch_size(self, rescue_round: bool) -> int:
         """根据当前状态动态调整 batch，提升停滞阶段探索效率。"""
@@ -178,6 +233,7 @@ class CoordinatorAgent(BaseAgent):
             round_num = self.global_state.round_number
 
             self.log_info(f"\n--- 第 {round_num} 轮 (阶段: {self.global_state.phase.name}) ---")
+            self._emit_deferred_review_feedback(round_num)
 
             # 检查阶段切换
             if self.global_state.should_transition_to_deep():
@@ -229,8 +285,11 @@ class CoordinatorAgent(BaseAgent):
             # 结束本轮
             summary = self.global_state.finish_round()
             self._log_round_summary(summary)
+            if self.global_state.phase != Phase.FINALIZE:
+                self._collect_review_feedback_for_next_round(round_num)
 
         # 测试循环结束
+        self._deferred_review_feedback = []
         self._finalize()
 
     def on_execution_results(self, msg: Message):
