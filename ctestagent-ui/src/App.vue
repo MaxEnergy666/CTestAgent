@@ -1,7 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { ElNotification } from 'element-plus'
-import { VideoPause, VideoPlay, SwitchButton } from '@element-plus/icons-vue'
 import HeaderBar from './components/HeaderBar.vue'
 import LeftPanel from './components/LeftPanel.vue'
 import AgentFlowView from './components/AgentFlowView.vue'
@@ -12,7 +11,6 @@ import AgentLogSection from './components/AgentLogSection.vue'
 import StatsChartsSection from './components/StatsChartsSection.vue'
 import AnimatedNumber from './components/AnimatedNumber.vue'
 import { testStore } from './stores/testStore'
-import { pauseTestFlow, startTestFlow, stopTestFlow } from './api/runtimeControl'
 
 const paramsSectionRef = ref(null)
 const crashFlash = ref(false)
@@ -60,40 +58,8 @@ const runtimeSummary = computed(() => {
   ].join(' / ')
 })
 
-const startButtonDisabled = computed(() => {
-  return testStore.status === 'running' || testStore.uploadingSource || testStore.startingTest
-})
-
-const startButtonLoading = computed(() => testStore.uploadingSource || testStore.startingTest)
-const pauseButtonDisabled = computed(() => testStore.status !== 'running')
-const stopButtonDisabled = computed(() => testStore.status === 'idle' && !testStore.activeRunId)
-
 function scrollToParams() {
   paramsSectionRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
-
-async function handleStart() {
-  try {
-    await startTestFlow()
-  } catch (error) {
-    console.error('handleStart error:', error)
-  }
-}
-
-async function handlePause() {
-  try {
-    await pauseTestFlow()
-  } catch (error) {
-    console.error('handlePause error:', error)
-  }
-}
-
-async function handleStop() {
-  try {
-    await stopTestFlow(true)
-  } catch (error) {
-    console.error('handleStop error:', error)
-  }
 }
 
 watch(
@@ -136,20 +102,6 @@ onBeforeUnmount(() => {
           <div>
             <span class="eyebrow">准备测试</span>
             <h2>源码上传与快速启动</h2>
-          </div>
-          <div class="control-actions">
-            <el-button type="primary" round :disabled="startButtonDisabled" :loading="startButtonLoading" @click="handleStart">
-              <el-icon><VideoPlay /></el-icon>
-              启动
-            </el-button>
-            <el-button round :disabled="pauseButtonDisabled" @click="handlePause">
-              <el-icon><VideoPause /></el-icon>
-              暂停
-            </el-button>
-            <el-button type="danger" round plain :disabled="stopButtonDisabled" @click="handleStop">
-              <el-icon><SwitchButton /></el-icon>
-              停止
-            </el-button>
           </div>
         </div>
 
@@ -280,13 +232,6 @@ onBeforeUnmount(() => {
   color: #69ddff;
   font-size: 12px;
   letter-spacing: 0;
-}
-
-.control-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
 }
 
 .control-grid {
@@ -456,11 +401,6 @@ onBeforeUnmount(() => {
   .section-heading {
     align-items: flex-start;
     flex-direction: column;
-  }
-
-  .control-actions {
-    width: 100%;
-    justify-content: flex-start;
   }
 
   .stats-row {

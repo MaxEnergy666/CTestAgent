@@ -75,7 +75,7 @@ function scheduleAutoUpload() {
 
   autoUploadTimer = window.setTimeout(async () => {
     if (uploadedFiles.value.length === 0) return
-    await uploadToBackend({ silentSuccess: true })
+    await uploadToBackend({ successMessage: '已同步到后端' })
   }, 350)
 }
 
@@ -86,12 +86,14 @@ function formatFileSize(size) {
 }
 
 async function uploadToBackend(options = {}) {
-  const { silentSuccess = false } = options
+  const { successMessage = '已同步到后端' } = options
   const files = uploadedFiles.value.map((item) => item.raw).filter(Boolean)
   if (files.length === 0) {
     ElMessage.warning('请先选择要上传的 .c/.h 文件')
     return false
   }
+
+  if (sourceSynced.value) return true
 
   if (uploading.value) return false
 
@@ -104,9 +106,7 @@ async function uploadToBackend(options = {}) {
     if (sourceDir) {
       testStore.sourceDir = sourceDir
       testStore.syncedFilesFingerprint = testStore.pendingFilesFingerprint
-      if (!silentSuccess) {
-        ElMessage.success(`上传成功：${files.length} 个文件`)
-      }
+      ElMessage.success(successMessage)
       return true
     }
 
@@ -158,16 +158,9 @@ async function uploadToBackend(options = {}) {
     </div>
 
     <div v-if="uploadedFiles.length > 0" class="upload-actions">
-      <el-button size="small" type="primary" :loading="uploading" @click="uploadToBackend()">
-        立即上传到后端
-      </el-button>
-      <el-tag size="small" :type="sourceSynced ? 'success' : 'warning'">
-        {{ sourceSynced ? '后端已同步' : '待同步' }}
+      <el-tag size="small" :type="sourceSynced ? 'success' : 'warning'" effect="dark">
+        {{ uploading ? '同步中...' : sourceSynced ? '已同步到后端' : '待同步' }}
       </el-tag>
-    </div>
-
-    <div class="source-dir" v-if="testStore.sourceDir">
-      当前上传目录：{{ testStore.sourceDir }}
     </div>
 
     <div class="upload-tip" v-if="uploadedFiles.length > 0">
@@ -244,13 +237,6 @@ async function uploadToBackend(options = {}) {
   font-size: 12px;
 }
 
-.source-dir {
-  margin-top: 8px;
-  font-size: 12px;
-  color: #8fdcff;
-  word-break: break-all;
-}
-
 .upload-tip {
   margin-top: 10px;
   padding: 10px;
@@ -265,7 +251,7 @@ async function uploadToBackend(options = {}) {
   margin-top: 10px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 8px;
 }
 </style>
