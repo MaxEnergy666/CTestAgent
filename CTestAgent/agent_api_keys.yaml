@@ -9,7 +9,7 @@ model: "claude-haiku-4-5"
 timeout_seconds: 8
 
 # 可选：单个全局 key（六个智能体共用），配置后可不再逐个填写 keys.*。
-auth_token: "sk-K8gfFeTGxOp1LYxZjQvZDtBEElQfpU6a07hAs1qBMViLMLXX"
+auth_token: "YOUR_API_KEY_HERE"
 
 keys:
   # 可选：default 作为所有智能体的后备 key。

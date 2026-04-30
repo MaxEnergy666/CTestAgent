@@ -4,3 +4,12 @@ output/
 *.gcno
 *.gcov
 __pycache__/
+三人分工文档.md
+*.log
+*.backup
+.env
+.DS_Store
+*.pyc
+.pytest_cache/
+dist/
+build/
